@@ -1,0 +1,94 @@
+Aim: Secure the Management Plane
+
+R1
+hostname R1
+interface Loopback 0
+description R1 LAN
+ip address 192.168.1.1 255.255.255.0
+exit
+interface Serial 3/0
+description R1 --> R2
+ip address 10.1.1.1 255.255.255.252
+clock rate 128000
+no shutdown
+exit
+end
+
+R2
+hostname R2
+interface Serial 3/0
+description R2 --> R1
+ip address 10.1.1.2 255.255.255.252
+no shutdown
+exit
+interface Serial 3/1
+description R2 --> R3
+ip address 10.2.2.1 255.255.255.252
+clock rate 128000
+no shutdown
+exit
+end
+
+R3
+hostname R3
+interface Loopback0
+description R3 LAN
+ip address 192.168.3.1 255.255.255.0
+exit
+interface Serial 3/1
+description R3 --> R2
+ip address 10.2.2.2 255.255.255.252
+no shutdown
+exit
+end
+
+Step 2: Configure static routes.
+[a]: On R1, configure a default static route to ISP.
+R1(config)# ip route 0.0.0.0 0.0.0.0 10.1.1.2
+[b]: On R3, configure a default static route to ISP.
+R3(config)# ip route 0.0.0.0 0.0.0.0 10.2.2.1
+[c]: On R2, configure two static routes.
+R2(config)# ip route 192.168.1.0 255.255.255.0 10.1.1.1
+R2(config)# ip route 192.168.3.0 255.255.255.0 10.2.2.2
+[d]: From the R1 router, run the following Tcl script to verify connectivity.
+foreach address {
+192.168.1.1
+10.1.1.1
+10.1.1.2
+10.2.2.1
+10.2.2.2
+192.168.3.1
+} { ping $address }
+
+Step 3: Secure management access.
+[a] : On R1, use the security passwords command to set a minimum password length of 10
+characters.
+R1(config)# security passwords min-length 10
+[b] : Configure the enable secret encrypted password on both routers.
+R1(config)# enable secret class12345
+[c] : Configure a console password and enable login for routers. For additional security, the exectimeout command causes the line to log out after 5 minutes of inactivity. The logging synchronous
+command prevents console messages from interrupting command entry.
+R1(config)# line console 0
+R1(config-line)# password ciscoconpass
+R1(config-line)# exec-timeout 5 0
+R1(config-line)# login
+R1(config-line)# logging synchronous
+R1(config-line)# exit
+
+[d] : Configure the password on the vty lines for router R1.
+R1(config)# line vty 0 4
+R1(config-line)# password ciscovtypass
+R1(config-line)# exec-timeout 5 0
+R1(config-line)# login
+R1(config-line)# exit
+R1(config)#
+[e] : The aux port is a legacy port used to manage a router remotely using a modem and is hardly ever
+used. Therefore, disable the aux port.
+R1(config)# line aux 0
+R1(config-line)# no exec
+R1(config-line)# end
+
+[g] : Use the service password-encryption command to encrypt the line console and vty passwords.
+R1(config)# service password-encryption
+R1(config)#
+[h] : Issue the show run command

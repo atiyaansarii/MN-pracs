@@ -1,0 +1,37 @@
+To Study the Inter-VLAN routing on a layer-3 switch 
+
+STEP 1 
+We Configure the IP addresses on the PC 
+
+STEP 2: 
+Now we configure the Multilayer switch using the following command in the CLI mode
+switch>enable
+switch#conf term
+switch(config)# vlan 10
+switch(config-vlan)#name RAHULKEWAT
+switch(config-vlan)#exit
+switch(config)vlan 20
+switch(config-vlan)#name cisco
+switch(config-vlan)#exit
+switch(config)#int fa0/1
+switch(config-if)#switchport mode access
+switch(config-if)#switchport access vlan 10
+switch(config-if)#exit
+switch(config)#int fa0/2
+switch(config-if)#switchport mode access
+switch(config-if)#switchport access vlan 20
+switch(config-if)#exit
+switch(config)#interface vlan10
+switch(config-if)#ip address 192.168.1.1 255.255.255.0
+switch(config-if)#no shutdown
+switch(config-if)exit
+switch(config)#interface vlan20
+switch(config-if)#ip address 192.168.2.1 255.255.255.0
+switch(config-if)#no shutdown
+switch(config-if)exit
+
+switch#show ip interface brief
+
+
+- Now we ping PC1 from PC0 to check the connectivity 
+- Similarly ping PC0 from PC1 

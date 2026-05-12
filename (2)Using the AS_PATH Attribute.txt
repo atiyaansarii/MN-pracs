@@ -1,0 +1,144 @@
+oknUsing the AS_PATH Attribute
+Step 0: Suggested starting configurations
+R1#conf t
+hostname R1
+no ip domain-lookup
+line con 0
+logging synchronous
+exec-timeout 0 0
+exit
+
+R2#conf t
+hostname ISP
+no ip domain-lookup
+line con 0
+logging synchronous
+exec-timeout 0 0
+exit
+
+R3# conf t
+hostname CustRtr
+no ip domain-lookup
+line con 0
+logging synchronous
+exec-timeout 0 0
+exit
+
+Step 1: Prepare the routers for the lab.
+Cable the network as shown in the topology diagram. Erase the startup configuration and reload each
+router to clear previous configurations.
+
+Step 2: Configure the hostname and interface addresses.
+Router R1 (hostname Student)
+hostname Student
+interface Loopback0
+ip address 10.1.1.1 255.255.255.0
+interface Serial 3/0
+ip address 192.168.1.5 255.255.255.252
+clock rate 128000
+no shutdown
+
+Router R2 (hostname ISP)
+hostname ISP
+interface Loopback0
+ip address 10.2.2.1 255.255.255.0
+interface Serial0 3/0
+ip address 192.168.1.6 255.255.255.252
+no shutdown
+interface Serial 3/1
+ip address 172.24.1.17 255.255.255.252
+clock rate 128000
+no shutdown
+
+Router R3 (hostname CustRtr)
+hostname CustRtr
+interface Loopback0
+ip address 10.3.3.1 255.255.255.0
+interface Serial 3/1
+ip address 172.24.1.18 255.255.255.252
+no shutdown
+
+Step 3: Configure BGP.
+Student(config)# router bgp 100
+Student(config-router)# neighbor 192.168.1.6 remote-as 300
+Student(config-router)# network 10.1.1.0 mask 255.255.255.0
+
+ISP(config)# router bgp 300
+ISP(config-router)# neighbor 192.168.1.5 remote-as 100
+ISP(config-router)# neighbor 172.24.1.18 remote-as 65000
+ISP(config-router)# network 10.2.2.0 mask 255.255.255.0
+
+CustRtr(config)# router bgp 65000
+CustRtr(config-router)# neighbor 172.24.1.17 remote-as 300
+CustRtr(config-router)# network 10.3.3.0 mask 255.255.255.0
+
+b. Verify that these routers have established the appropriate neighbor relationships by issuing the
+show ip bgp neighbors command on each router.
+ISP# show ip bgp neighbors
+
+Step 4: Remove the private AS.
+a. Display the Student routing table using thsehow ip route command. Student should have a route to
+both 10.2.2.0 and 10.3.3.0. Troubleshoot if necessary.
+
+Student# show ip route
+
+b. Ping the 10.3.3.1 address from Student.
+ping 10.3.3.1
+
+c. Ping again, this time as an extended ping, sourcing from the Loopback0 interface address.
+student#ping
+
+d. Check the BGP table from Student by using the show ip bgp command. Note the AS path for the
+10.3.3.0 network. The AS 65000 should be listed in the path to 10.3.3.0.
+Student# show ip bgp
+
+e. Configure ISP to strip the private AS numbers from BGP routes exchanged with Student using the
+following commands.
+ISP(config)# router bgp 300
+ISP(config-router)# neighbor 192.168.1.5 remove-private-as
+
+f. After issuing these commands, use the clear ip bgp * command on ISP to reestablish the BGP
+relationship between the three routers.
+clear ip bgp
+Student# ping 10.3.3.1 source lo0
+Student# show ip bgp
+
+Step 5: Use the AS_PATH attribute to filter routes.
+ISP(config)# ip as-path access-list 1 deny ^100$
+ISP(config)# ip as-path access-list 1 permit .*
+
+ISP(config)# router bgp 300
+ISP(config-router)# neighbor 172.24.1.18 filter-list 1 out
+clear ip bgp *
+
+ISP# show ip route
+CustRtr# show ip route
+
+e. Return to ISP and verify that the filter is working as intended. Issue the show ip bgp regexp ^100$
+command.
+ISP# show ip bgp regexp ^100$
+
+ISP# tclsh
+foreach address {
+10.1.1.1
+10.2.2.1
+10.3.3.1
+192.168.1.5
+192.168.1.6
+172.24.1.17
+172.24.1.18
+} {
+ping $address }
+
+
+
+
+
+
+
+
+
+
+
+
+

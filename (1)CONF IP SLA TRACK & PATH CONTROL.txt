@@ -1,0 +1,214 @@
+CONF IP SLA TRACK & PATH CONTROL
+
+S1 : Prepare Routers and configure , router name and ip
+
+* R1 - router isp1
+conf t
+hostname R1
+interface loopback 0
+ip address 192.168.1.1 255.255.255.0
+interface serial 3/0
+description R1 --> ISP1
+clock rate 128000
+bandwidth 128
+no shutdown
+interface serial 3/1
+description R1 --> ISP2
+ip address 209.165.202.130 255.255.255.252
+bandwidth 128
+no shutdown
+
+* R2- router isp1
+conf t
+hostname ISPR2
+interface loopback 0
+description Simulated Internet Web Server
+ip address 209.165.201.1 255.255.255.252
+bandwidth 128
+no shutdown
+
+* R3
+conf t
+hostname ISPR3
+interface loopback0
+description Simulated Internet Web Server
+ip Address 209.165.200.254 255.255.255.255
+
+interface loopback1
+description ISP2 DNS Server
+ip address 209.165.202.158 255.255.255.255
+
+interface Serial 3/0
+description ISP2 -- R1
+ip address 209.165.202.129 255.255.255.252
+bandwidth 128
+no shutdown
+
+s2 :Verifying the config by using interface . Output form r r1
+
+R1#show interfaces description | include up
+
+s3 : doing routing acc to topology
+R1
+ip route 0.0.0.0 0.0.0.0 209.165.201.1
+
+Router ISP1 (R2)
+router eigrp 1
+network 209.165.200.224 0.0.0.3
+network 209.165.201.0 0.0.0.31
+no auto-summary
+ip route 192.168.1.0 255.255.255.0 209.165.201.2
+
+Router ISP2 (R3)
+router eigrp 1
+network 209.165.200.224 0.0.0.3
+network 209.165.202.128 0.0.0.31
+no auto-summary
+ip route 192.168.1.0 255.255.255.0 209.165.202.130
+
+Verify server reachability.
+foreach address{
+209.165.200.254
+209.165.201.30
+209.165.202.158
+} {
+ping $address source 192.168.1.1
+}
+
+b. Trace the path taken to the web server, ISP1 DNS server, and ISP2 DNS server.
+foreach address{
+209.165.200.254
+209.165.201.30
+209.165.202.158
+} {
+trace $address source 192.168.1.1
+}
+
+Configure IP SLA probes.
+a. Create an ICMP echo probe on R1 to the primary DNS server on ISP1 using the ip sla
+command.
+R1(config)# ip sla 11
+R1(config-ip-sla)# icmp-echo 209.165.201.30
+R1(config-ip-sla-echo)# frequency 10
+R1(config-ip-sla-echo)# exit
+R1(config)# ip sla schedule 11 life forever start-time now
+
+b. Verify the IP SLAs configuration of operation 11 using the show ip sla configuration 11
+command.
+R1# show ip sla configuration 11
+
+c. Issue the show ip sla statistics command to display the number of successes, failures, and results
+of the latest operations.
+R1# show ip sla statistics
+
+c. Issue the show ip sla statistics command to display the number of successes, failures, and results
+of the latest operations.
+R1# show ip sla statistics
+
+e. Verify the new probe using the show ip sla configuration and show ip sla statistics commands.
+R1# show ip sla configuration 22
+R1# show ip sla statistics 22
+
+Step 4:
+Configure tracking options.
+a. Remove the current default route on R1, and replace it with a floating static route having an
+administrative distance of 5.
+R1(config)# no ip route 0.0.0.0 0.0.0.0 209.165.201.1
+R1(config)# ip route 0.0.0.0 0.0.0.0 209.165.201.1 5
+R1(config)# exit
+
+b. Verify the routing table.
+R1# show ip route
+
+c. Use the track 1 ip sla 11 reachability command to enter the config-track subconfiguration mode.
+R1(config)# track 1 ip sla 11 reachability
+
+
+d. Specify the level of sensitivity to changes of tracked objects to 10 seconds of down delay and 1
+second of up delay using the delay down 10 up 1 command. 
+R1(config-track)# delay down 10 up 1
+R1(config-track)# exit
+R1(config)#
+
+e. Configure the floating static route
+R1# debug ip routing
+R1(config)# ip route 0.0.0.0 0.0.0.0 209.165.201.1 2 track 1
+
+f. Repeat the steps for operation 22, track number 2, and assign the static route an admin distance
+higher than track 1 and lower than 5.
+R1(config)#track 2 ip sla 22 reachability
+R1(config-track)#delay down 10 up 1
+R1(config-track)#exit
+ip route 0.0.0.0 0.0.0.0 209.165.202.129 3 track 2
+
+R1#sh ip route
+
+
+Step 5: Verify IP SLA operation.
+ISP1(config)# interface loopback 1
+ISP1(config-if)# shutdown 
+
+R1#sh ip route | begin Gateway
+
+ Verify the IP SLA statistics. 
+R1# show ip sla statistics
+
+Initiate a trace to the web server from the internal LAN IP address. 
+R1# trace 209.165.200.254 source 192.168.1.1
+
+ISP1(config-if)# no shutdown
+
+r1#debug ip routing
+
+R1# show ip sla statistics
+
+
+R1# show ip route
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+
+

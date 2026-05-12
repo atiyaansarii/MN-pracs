@@ -1,0 +1,99 @@
+Simulating MPLS Environment. 
+
+Step 1: IP addressing of MPLS Core and OSPF 
+First bring 3 routers into your topology R1, R2, R3 position them as below. We are going to address 
+the routers and configure ospf to ensure loopback to loopback connectivity between R1 and R3. 
+
+R1 :
+hostname R1
+int 1o0
+ip add 1.1.1.1 255.255.2555.255
+ip ospf  area 0
+int f0/0
+ip add 10.0.0.1 255.255.255.0
+no shut
+ip ospf 1 area 0
+
+R2 :
+hostname R2
+int 1o0
+ip add 2.2.2.2 255.255.2555.255
+ip ospf 1  area 0
+int f0/0
+ip add 10.0.0.2 255.255.255.0
+no shut
+ip ospf 1 area 0
+int f0/1
+ip add 10.0.1.2 255.255.255.0
+no shut
+ip ospf 1 area 0
+
+R3 :
+hostname R3
+int 1o0
+ip add 3.3.3.3 255.255.2555.255
+ip ospf 1 area 0
+int f0/0
+ip add 10.0.1.3 255.255.255.0
+no shut
+ip ospf 1 area 0
+
+You should now have full ip connectivity between R1, R2, R4 to verify this we need to see if we can 
+ping between the loopbacks of R1 and R4. 
+R1#ping 3.3.3.3 source lo0
+
+
+Step 2: Configure LDP on all the interfaces in the MPLS Core.
+
+R1:
+router ospf 1
+mpls Idp autoconfig
+
+R2:
+router ospf 1 
+mpls ldp autoconfig
+
+R3:
+router ospf 1
+mpls ldp autoconfig
+
+You should see log messages coming up showing the LDP neighbors are up 
+To verify the mpls interfaces the command is very simple – sh mpls interface This is done on R2 and 
+you can see that both interfaces are running mpls and using LDP. 
+R2#sh mpls interface 
+ 
+You can also verify the LDP neighbors with the sh mpls ldp neighbors command 
+R2#sh mpls ldp neigh
+
+One more verification to confirm LDP is running ok is to do a trace between R1 and R3 and verify if 
+you get MPLS Labels show up in the trace. 
+R1#trace 3.3.3.3 
+
+
+Step 3: MPLS BGP Configuration between R1 and R3 
+
+R1
+touter bgp 1g
+neighbor bgp 1
+neighbor 3.3.3.3 remote-as 1
+neighbor 3.3.3.3 update-source Loopback0
+no auto-summary
+address-family vpn4
+neighbor 3.3.3.3 activate
+
+R3
+router bgp 1
+neighbor 1.1.1.1 remote-as 1
+neighbor 1.1.1.1 update-source Loopback0
+no auto-summary
+address-family vpnv4
+neighbor 1.1.1.1 activate
+
+You should see log messages showing the BGP sessions coming up. To verify the BGP session between R1 and R3 issue the command sh bgp vpnv4 unicast all summary 
+R1#sh bgp vpnv4 unicast all summary 
+
+
+You can see here that we do have a bgp vpnv4 peering to R3 – looking at the PfxRcd you can see it 
+says 0 this is because we have not got any routes in BGP. We are now going to add two more routers 
+to the topology. These will be the customer sites connected to R1 and R3. We will then create a VRF 
+on each router and put the interfaces connected to each site router into that VRF.
